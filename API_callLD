@@ -9,10 +9,15 @@ from linebot.models import (
     MessageEvent, TextMessage, TextSendMessage,AudioMessage,AudioSendMessage,ImageMessage
 )
 
+#YOUR_CHANNEL_ACCESS_TOKEN = line channel access token 
 line_bot_api = LineBotApi(os.environ['YOUR_CHANNEL_ACCESS_TOKEN'])
+
+#YOUR_CHANNEL_SECRET = line channel secret
 handler = WebhookHandler(os.environ['YOUR_CHANNEL_SECRET'])
 
 s3 = boto3.client('s3')
+
+#S3_BUCKET_NAME = your S3 bucket name
 s3_bucket_name = os.environ['S3_BUCKET_NAME']
 
 def lambda_handler(event, context):
@@ -27,18 +32,23 @@ def lambda_handler(event, context):
     #checking message type
     if msg['events'][0]['message']['type'] == "audio":
         
+        #get message content from line
         message_content = line_bot_api.get_message_content(message_id)
+        
+        #setting file name and file path
         file_name = f'{message_id}.wav'
         ld_file_path = f'/tmp/{message_id}.wav'
-
+        
+        #looping for get binary content in eachline to write in file path
         with open(ld_file_path, 'wb' ) as f:
             for chunk in message_content.iter_content():
                 f.write(chunk)
             f.close()
-        s3.upload_file(ld_file_path,s3_bucket_name,file_name)
+            
+        #upload file to S3 bucket
+        s3.upload_file(ld_file_path,s3_bucket_name,file_name)     
         
-        #handler.handle(body)
-        
+        #after receive send message to remind user
         line_bot_api.reply_message(
                 msg['events'][0]['replyToken'],
                 TextSendMessage(text="S3")
