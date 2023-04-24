@@ -15,29 +15,48 @@ handler = WebhookHandler(os.environ['YOUR_CHANNEL_SECRET'])
 s3 = boto3.client('s3')
 s3_bucket_name = os.environ['S3_BUCKET_NAME']
 
+@handler.add(MessageEvent,message=AudioMessage)
+def handle_audio(event):
+    
+    body = event['body']
+    #msg = json.loads(event['body'])
+    msg = event['body']
+    message_id = msg['events'][0]['message']['id']
+    
+    message_content = line_bot_api.get_message_content(message_id)
+    
+    file_name = f'{message_id}.wav'
+    ld_file_path = f'/tmp/{message_id}.wav'
+    
+    with open(ld_file_path, 'wb' ) as f:
+        for chunk in message_content.iter_content():
+            f.write(chunk)
+        f.close()
+    s3.upload_file(ld_file_path,s3_bucket_name,file_name)
+
 def lambda_handler(event, context):
     
     body = event['body']
     #signature = event['headers']['x-line-signature']
 
-    msg = json.loads(event['body'])
-    #msg = event['body']
+    #msg = json.loads(event['body'])
+    msg = event['body']
     message_id = msg['events'][0]['message']['id']
-    
-    
     
     #checking message type
     if msg['events'][0]['message']['type'] == "audio":
         
-        message_content = line_bot_api.get_message_content(message_id)
-        file_name = f'{message_id}.wav'
-        ld_file_path = f'/tmp/{message_id}.wav'
+        # message_content = line_bot_api.get_message_content(message_id)
+        # file_name = f'{message_id}.wav'
+        # ld_file_path = f'/tmp/{message_id}.wav'
 
-        with open(ld_file_path, 'wb' ) as f:
-            for chunk in message_content.iter_content():
-                f.write(chunk)
-            f.close()
-        s3.upload_file(ld_file_path,s3_bucket_name,file_name)
+        # with open(ld_file_path, 'wb' ) as f:
+        #     for chunk in message_content.iter_content():
+        #         f.write(chunk)
+        #     f.close()
+        # s3.upload_file(ld_file_path,s3_bucket_name,file_name)
+        
+        handler.handle(body)
         
         line_bot_api.reply_message(
                 msg['events'][0]['replyToken'],
